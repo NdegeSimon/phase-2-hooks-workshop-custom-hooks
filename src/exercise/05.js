@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-// checks if the user is idle or not based on these event types
+// Default activity events to monitor
 const activityEvents = [
   "mousedown",
   "mousemove",
@@ -13,23 +13,28 @@ export function useIdle(ms, eventTypes = activityEvents) {
   const [isIdle, setIsIdle] = useState(false);
 
   useEffect(() => {
-    let interval = setTimeout(() => setIsIdle(true), ms);
+    let timeoutId;
 
-    function setActive() {
+    const handleActivity = () => {
       setIsIdle(false);
-      clearTimeout(interval);
-      interval = setTimeout(() => setIsIdle(true), ms);
-    }
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => setIsIdle(true), ms);
+    };
 
-    for (const type of eventTypes) {
-      window.addEventListener(type, setActive);
-    }
+    // Set initial timeout
+    timeoutId = setTimeout(() => setIsIdle(true), ms);
 
-    return function cleanup() {
-      for (const type of eventTypes) {
-        window.removeEventListener(type, setActive);
-      }
-      clearTimeout(interval);
+    // Add event listeners
+    eventTypes.forEach((eventType) => {
+      window.addEventListener(eventType, handleActivity);
+    });
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeoutId);
+      eventTypes.forEach((eventType) => {
+        window.removeEventListener(eventType, handleActivity);
+      });
     };
   }, [ms, eventTypes]);
 

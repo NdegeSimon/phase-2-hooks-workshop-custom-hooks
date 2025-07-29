@@ -1,81 +1,46 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
-/* 
-  the two parameters for this function are: 
-  - key: the key on localStorage where we are saving this data
-  - initialValue: the initial value of state
-*/
-export function useLocalStorage(key, initialValue) {
-  /* 
-    ✅ in this hook, use the useState hook. For the initial value for state:
-    use the value saved in localStorage OR the initialValue from the function parameters 
-  */
-
-  /* 
-   ✅ write a useEffect hook 
-   in the useEffect, when state is updated, save the state to localStorage
-   don't forget the dependencies array!
-  */
-  useEffect(() => {});
-
-  /* 
-   ✅ return the same interface as useState:
-   an array with state and a setState function
-  */
-  // 👀 return [state, setState]
-}
-
-function Form() {
-  // ✅ after implementing the useLocalStorage hook, replace useState with useLocalStorage
-  // don't forget to pass in both arguments (a key and an initialValue)
-  const [name, setName] = useState("");
-  console.log(name);
-
-  return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <label htmlFor="name">Name:</label>
-      <input type="text" value={name} onChange={e => setName(e.target.value)} />
-      <h4>{name ? `Welcome, ${name}!` : "Enter your name"}</h4>
-    </form>
-  );
-}
-
-function FormWithObject() {
-  // 🤓 save me for the bonus! when you're ready, update this useState to use your useLocalStorage hook instead
-  const [formData, setFormData] = useState({
-    title: "",
-    content: "",
+export function useLocalStorage(key, initialValue = null) {
+  const [state, setState] = useState(() => {
+    try {
+      const storedValue = localStorage.getItem(key);
+      return storedValue !== null ? JSON.parse(storedValue) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
   });
 
-  function handleChange(e) {
-    setFormData(formData => ({
-      ...formData,
-      [e.target.name]: e.target.value,
-    }));
-  }
+  useEffect(() => {
+    try {
+      if (state === null || state === undefined) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, JSON.stringify(state));
+      }
+    } catch (error) {
+      console.error("Error writing to localStorage:", error);
+    }
+  }, [key, state]);
 
-  return (
-    <form style={{ display: "flex", flexDirection: "column" }}>
-      <label htmlFor="name">Title:</label>
-      <input name="title" value={formData.title} onChange={handleChange} />
-      <label htmlFor="name">Content:</label>
-      <textarea
-        name="content"
-        value={formData.content}
-        onChange={handleChange}
-      />
-    </form>
-  );
-}
+  useEffect(() => {
+    const handleStorageChange = (event) => {
+      if (event.key === key && event.newValue !== JSON.stringify(state)) {
+        try {
+          const newValue = event.newValue !== null 
+            ? JSON.parse(event.newValue) 
+            : initialValue;
+          setState(newValue);
+        } catch (error) {
+          console.error("Error parsing storage event:", error);
+        }
+      }
+    };
 
-export default function App() {
-  return (
-    <div>
-      <h2>useLocalStorage can save string</h2>
-      <Form />
-      <hr />
-      <h2>useLocalStorage can save objects (Bonus)</h2>
-      <FormWithObject />
-    </div>
-  );
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, [key, initialValue, state]);
+
+  return [state, setState];
 }
